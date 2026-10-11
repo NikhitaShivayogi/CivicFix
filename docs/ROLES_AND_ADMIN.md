@@ -40,14 +40,13 @@ These are not safe production credentials. Set private values in `backend/.env` 
 
 The seed script reads `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_PHONE`. If they are not set, it uses the defaults above.
 
-To create the Admin account, make sure MongoDB is running and `backend/.env` contains a valid `MONGO_URI`, then run these commands from the `backend` directory:
+To create the Admin account, make sure MongoDB is running and `backend/.env` contains a valid `MONGO_URI`, then run this command from the `backend` directory:
 
 ```powershell
-npm run migrate:roles
 npm run seed
 ```
 
-The first command copies existing accounts into their role-specific collections. The second creates the Admin if the configured email does not already exist. If it already exists, seeding does not reset its password; changing `ADMIN_PASSWORD` and rerunning the seed will not change an existing account.
+The seed script creates the Admin if the configured email does not already exist. If it already exists, seeding does not reset its password; changing `ADMIN_PASSWORD` and rerunning the seed will not change an existing account.
 
 ## Account collections and data integrity
 
@@ -57,13 +56,8 @@ MongoDB uses **collections** rather than SQL tables. CivicFix stores role-specif
 - `authorities`: authority details, approval status, and login data
 - `admins`: admin details and login data
 - `accountidentities`: unique email, role, and account ID, used to find the correct role collection during login
-- `users`: the old shared collection, kept unchanged as a migration backup
 
 Role-specific schemas restrict each account collection to its own role. The identity collection prevents the same email from being registered in multiple role collections. Reports reference citizens and authorities; status history references authorities; notifications are scoped by account ID and role.
-
-### Existing data migration
-
-Run `npm run migrate:roles` from `backend` before starting the app against a database that still has the old `users` collection. The migration preserves account IDs so existing report, notification, and history references keep working. It is safe to rerun and does not delete or modify the old `users` collection. Keep the old collection until you have verified the migrated data and made a database backup.
 
 ## How the workflow fits together
 
@@ -82,6 +76,5 @@ Run `npm run migrate:roles` from `backend` before starting the app against a dat
 - Admin account model: [`backend/models/Admin.js`](../backend/models/Admin.js)
 - Unique account identity: [`backend/models/AccountIdentity.js`](../backend/models/AccountIdentity.js)
 - Admin seed script: [`backend/utils/seeder.js`](../backend/utils/seeder.js)
-- Existing-account migration: [`backend/utils/migrateRoleCollections.js`](../backend/utils/migrateRoleCollections.js)
 - Admin approval API: [`backend/routes/authRoutes.js`](../backend/routes/authRoutes.js)
 - Authority issue workflow: [`backend/routes/authorityRoutes.js`](../backend/routes/authorityRoutes.js)

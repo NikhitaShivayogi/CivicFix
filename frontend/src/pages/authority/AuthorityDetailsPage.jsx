@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, UserRoundCheck } from 'lucide-react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../context/AuthContext';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const statusOptions = ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'DUPLICATE'];
 
@@ -74,7 +75,7 @@ export default function AuthorityDetailsPage() {
   if (!report) return <p role="alert" className="text-sm text-red-700">{error || 'Issue not found.'}</p>;
 
   const [latitude, longitude] = [report.location.latitude, report.location.longitude];
-  const imageUrl = report.imageUrl ? new URL(report.imageUrl, axios.defaults.baseURL).toString() : '';
+  const imageUrl = resolveImageUrl(report.imageUrl);
   const isResponsible = report.authorityId && String(report.authorityId._id || report.authorityId) === String(user?._id || user?.id);
 
   return (
@@ -94,7 +95,27 @@ export default function AuthorityDetailsPage() {
             <p className="mt-3 text-sm leading-7 text-slate-600">{report.description}</p>
           </div>
 
-          {imageUrl && <img src={imageUrl} alt={`Evidence for ${report.title}`} className="max-h-96 w-full rounded-xl border border-slate-200 object-contain" />}
+          {imageUrl ? (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              <img
+                src={imageUrl}
+                alt={`Evidence for ${report.title}`}
+                className="max-h-[28rem] w-full object-contain"
+                onError={(event) => {
+                  event.currentTarget.style.display = 'none';
+                  const fallback = event.currentTarget.nextElementSibling;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              <p className="hidden items-center justify-center gap-2 p-8 text-sm text-slate-500">
+                <AlertCircle size={18} /> Unable to load the evidence photo.
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
+              No photo was attached to this report.
+            </div>
+          )}
 
           <div className="h-72 overflow-hidden rounded-2xl border border-slate-200">
             <MapContainer center={[latitude, longitude]} zoom={14} scrollWheelZoom className="h-full w-full">

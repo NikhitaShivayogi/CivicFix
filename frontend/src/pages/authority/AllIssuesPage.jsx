@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Search } from 'lucide-react';
+import { ImageOff, Search } from 'lucide-react';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const statusStyles = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -48,6 +49,7 @@ export default function AllIssuesPage() {
         <table className="min-w-full divide-y divide-slate-200 text-left">
           <thead className="bg-slate-50">
             <tr>
+              <th className="px-4 py-3 text-sm font-semibold text-slate-700">Photo</th>
               <th className="px-4 py-3 text-sm font-semibold text-slate-700">Report ID</th>
               <th className="px-4 py-3 text-sm font-semibold text-slate-700">Title</th>
               <th className="px-4 py-3 text-sm font-semibold text-slate-700">Reported by</th>
@@ -59,8 +61,19 @@ export default function AllIssuesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 bg-white">
-            {filteredIssues.map((issue) => (
+            {filteredIssues.map((issue) => {
+              const photoUrl = resolveImageUrl(issue.imageUrl);
+              return (
               <tr key={issue._id}>
+                <td className="px-4 py-3">
+                  {photoUrl ? (
+                    <img src={photoUrl} alt="" className="h-12 w-12 rounded-lg border border-slate-200 object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400">
+                      <ImageOff size={16} />
+                    </div>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-sm text-slate-700">{issue.reportId}</td>
                 <td className="px-4 py-3 text-sm text-slate-800">{issue.title}</td>
                 <td className="px-4 py-3 text-sm text-slate-700">
@@ -80,8 +93,9 @@ export default function AllIssuesPage() {
                 </td>
                 <td className="px-4 py-3 text-sm"><Link to={`/authority/issues/${issue._id}`} className="font-semibold text-civic-700 hover:text-civic-900">Review</Link></td>
               </tr>
-            ))}
-            {!loading && !error && filteredIssues.length === 0 && <tr><td colSpan="8" className="px-4 py-8 text-center text-sm text-slate-500">No issues match these filters.</td></tr>}
+              );
+            })}
+            {!loading && !error && filteredIssues.length === 0 && <tr><td colSpan="9" className="px-4 py-8 text-center text-sm text-slate-500">No issues match these filters.</td></tr>}
           </tbody>
         </table>
       </div>

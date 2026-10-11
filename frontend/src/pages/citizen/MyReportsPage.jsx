@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const statusStyles = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -46,6 +47,15 @@ export default function MyReportsPage() {
               <p><span className="font-medium text-slate-800">Date:</span> {new Date(report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
               <p><span className="font-medium text-slate-800">Location:</span> {report.location.address || `${report.location.latitude}, ${report.location.longitude}`}</p>
             </div>
+            {resolveImageUrl(report.imageUrl) && (
+              <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <img
+                  src={resolveImageUrl(report.imageUrl)}
+                  alt={`Evidence for ${report.title}`}
+                  className="max-h-64 w-full object-contain"
+                />
+              </div>
+            )}
             <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
               <p><span className="font-medium text-slate-800">Authority remarks:</span> {report.remarks || 'Awaiting authority review'}</p>
               <p className="mt-2"><span className="font-medium text-slate-800">Last updated:</span> {new Date(report.updatedAt || report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>

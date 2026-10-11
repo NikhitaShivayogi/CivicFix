@@ -61,11 +61,10 @@ cd ..
 From the `backend` folder, run:
 
 ```powershell
-npm run migrate:roles
 npm run seed
 ```
 
-The migration is safe to rerun, preserves account IDs, and leaves the original `users` collection as a backup. Back up your database before migrating. The seed command creates the default Admin only if the configured Admin email does not already exist.
+The seed command creates the default Admin only if the configured Admin email does not already exist.
 
 ### 3. Start the project
 
@@ -94,7 +93,6 @@ Run each command from its package folder:
 | Purpose | Folder | Command |
 | --- | --- | --- |
 | Start backend for development | `backend` | `npm run dev` |
-| Migrate existing role accounts | `backend` | `npm run migrate:roles` |
 | Create Admin if missing | `backend` | `npm run seed` |
 | Approve an authority from terminal | `backend` | `npm run review-authority -- approve email@example.com` |
 | Reject an authority from terminal | `backend` | `npm run review-authority -- reject email@example.com` |
@@ -104,4 +102,4 @@ Run each command from its package folder:
 
 ## Roles and Admin setup
 
-For sign-in routes, account workflows, default local Admin credentials, collection details, and migration information, see [docs/ROLES_AND_ADMIN.md](docs/ROLES_AND_ADMIN.md).
+For sign-in routes, account workflows, default local Admin credentials, and collection details, see [docs/ROLES_AND_ADMIN.md](docs/ROLES_AND_ADMIN.md).

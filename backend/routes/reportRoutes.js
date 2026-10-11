@@ -33,7 +33,7 @@ router.post(
         title: req.body.title,
         category: req.body.category,
         description: req.body.description,
-        imageUrl: req.file ? `/uploads/${req.file.filename}` : '',
+        imageUrl: req.file ? (req.file.path || `/uploads/${req.file.filename}`) : '',
         location: {
           latitude: Number(req.body.location.latitude),
           longitude: Number(req.body.location.longitude),

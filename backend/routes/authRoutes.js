@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 const AccountIdentity = require('../models/AccountIdentity');
 const accountModels = require('../models/accountModels');
+const Report = require('../models/Report');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -212,6 +213,28 @@ router.get('/admin/requests', protect, authorizeRoles('ADMIN'), async (_req, res
   try {
     const requests = await accountModels.AUTHORITY.find().select('-password').sort({ createdAt: -1 });
     res.json({ requests });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/stats', protect, authorizeRoles('ADMIN'), async (_req, res, next) => {
+  try {
+    const [citizenCount, authorityCount, reportCount, pendingAuthorityCount] = await Promise.all([
+      accountModels.CITIZEN.countDocuments(),
+      accountModels.AUTHORITY.countDocuments({ approvalStatus: 'APPROVED' }),
+      Report.countDocuments(),
+      accountModels.AUTHORITY.countDocuments({ approvalStatus: 'PENDING' }),
+    ]);
+
+    res.json({
+      stats: {
+        citizens: citizenCount,
+        authorities: authorityCount,
+        reports: reportCount,
+        pendingAuthorities: pendingAuthorityCount,
+      },
+    });
   } catch (error) {
     next(error);
   }
