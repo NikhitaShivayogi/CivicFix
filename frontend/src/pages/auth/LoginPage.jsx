@@ -31,7 +31,13 @@ export default function LoginPage({ expectedRole }) {
       }
       navigate(response.user.role === 'ADMIN' ? '/admin' : response.user.role === 'AUTHORITY' ? '/authority' : '/citizen');
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to log in. Please try again.');
+      if (err.response) {
+        setError(err.response.data?.message || 'Unable to log in. Please try again.');
+      } else if (err.request) {
+        setError('Cannot reach the server. Check your internet connection or contact support.');
+      } else {
+        setError('Unable to log in. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
