@@ -26,7 +26,7 @@ CivicFix is a student-built civic issue reporting platform for Indian communitie
 
 ## Setup and run
 
-Run the backend and frontend in separate terminals.
+Install the dependencies once, then start both apps together from the project folder.
 
 ### 1. Configure the backend
 
@@ -46,6 +46,16 @@ Copy `.env.example` only when creating `.env` for the first time. Open `backend/
 
 Keep `.env` private and never commit production credentials.
 
+Install the root runner and frontend dependencies from the project folder:
+
+```powershell
+cd ..
+npm install
+cd frontend
+npm install
+cd ..
+```
+
 ### 2. Prepare account data
 
 From the `backend` folder, run:
@@ -57,27 +67,15 @@ npm run seed
 
 The migration is safe to rerun, preserves account IDs, and leaves the original `users` collection as a backup. Back up your database before migrating. The seed command creates the default Admin only if the configured Admin email does not already exist.
 
-### 3. Start the backend
+### 3. Start the project
 
-In the same `backend` terminal:
+From the project folder, run:
 
 ```powershell
 npm run dev
 ```
 
-The API runs at `http://localhost:5000`. Check it at `http://localhost:5000/api/health`.
-
-### 4. Start the frontend
-
-Open a second terminal at the project folder and run:
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173` in your browser.
+This starts the API at `http://localhost:5000` and the frontend at `http://localhost:5173`. Check the API at `http://localhost:5000/api/health`. Press `Ctrl+C` to stop both.
 
 ## Project layout
 

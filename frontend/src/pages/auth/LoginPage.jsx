@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import { AlertCircle, Building2, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function LoginPage({ expectedRole }) {
@@ -55,7 +55,36 @@ export default function LoginPage({ expectedRole }) {
         </div>
 
         <div className="p-8">
-          <h2 className="text-2xl font-semibold text-slate-900">Login</h2>
+          {expectedRole !== 'ADMIN' && (
+            <nav aria-label="Choose sign-in type" className="mb-6 grid grid-cols-2 gap-2">
+              {[
+                { role: 'CITIZEN', label: 'Citizen', detail: 'Report and track issues', to: '/citizen/login', Icon: UserRound },
+                { role: 'AUTHORITY', label: 'Authority team', detail: 'Review community reports', to: '/authority/login', Icon: Building2 },
+              ].map(({ role, label, detail, to, Icon }) => {
+                const isActive = expectedRole === role;
+                return (
+                  <Link
+                    key={role}
+                    to={to}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`flex min-h-20 items-center gap-3 rounded-lg border px-3 py-3 transition ${isActive
+                      ? 'border-civic-600 bg-civic-50 text-civic-800 ring-1 ring-civic-600'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-civic-300 hover:bg-slate-50'}`}
+                  >
+                    <Icon size={20} className={isActive ? 'shrink-0 text-civic-700' : 'shrink-0 text-slate-500'} />
+                    <span className="min-w-0 text-left">
+                      <span className="block text-sm font-semibold">{label}</span>
+                      <span className="mt-0.5 block text-xs leading-4 text-slate-500">{detail}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+
+          <h2 className="text-2xl font-semibold text-slate-900">
+            {expectedRole === 'CITIZEN' ? 'Citizen sign in' : expectedRole === 'AUTHORITY' ? 'Authority team sign in' : expectedRole === 'ADMIN' ? 'Admin sign in' : 'Sign in'}
+          </h2>
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Email address</label>
@@ -104,13 +133,12 @@ export default function LoginPage({ expectedRole }) {
             )}
 
             <button type="submit" disabled={loading} className="w-full rounded-xl bg-civic-600 px-4 py-3 font-semibold text-white shadow-soft transition hover:bg-civic-700 disabled:cursor-not-allowed disabled:opacity-60">
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Signing in...' : expectedRole === 'CITIZEN' ? 'Sign in as citizen' : expectedRole === 'AUTHORITY' ? 'Sign in as authority' : 'Sign in'}
             </button>
           </form>
 
           <div className="mt-6 space-y-3 text-center text-sm text-slate-600">
             {expectedRole !== 'ADMIN' && <p>Need a citizen account? <Link to="/register" className="font-semibold text-civic-700">Create one</Link></p>}
-            {expectedRole !== 'AUTHORITY' && <p>Authority team? <Link to="/authority/login" className="font-semibold text-civic-700">Sign in here</Link></p>}
             {expectedRole !== 'AUTHORITY' && <p>New authority team? <Link to="/authority/request" className="font-semibold text-civic-700">Request access</Link></p>}
             {expectedRole === 'AUTHORITY' && <p>Need authority access? <Link to="/authority/request" className="font-semibold text-civic-700">Request access</Link></p>}
           </div>
