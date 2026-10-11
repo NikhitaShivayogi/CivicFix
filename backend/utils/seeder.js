@@ -20,8 +20,6 @@ async function seedAdmin() {
     throw new Error('ADMIN_PASSWORD must be at least 6 characters');
   }
 
-  await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 });
-
   const existingIdentity = await AccountIdentity.findOne({ email: adminEmail });
   if (existingIdentity) {
     if (existingIdentity.role !== 'ADMIN' || !(await Admin.exists({ _id: existingIdentity.accountId }))) {
@@ -50,9 +48,18 @@ async function seedAdmin() {
   console.log(`Default admin created: ${admin.email}`);
 }
 
-seedAdmin()
-  .catch((error) => {
-    console.error(error.message);
-    process.exitCode = 1;
-  })
-  .finally(() => mongoose.disconnect());
+if (require.main === module) {
+  (async () => {
+    try {
+      await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+      await seedAdmin();
+    } catch (error) {
+      console.error(error.message);
+      process.exitCode = 1;
+    } finally {
+      await mongoose.disconnect();
+    }
+  })();
+}
+
+module.exports = { seedAdmin };
