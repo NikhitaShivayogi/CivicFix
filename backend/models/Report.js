@@ -31,6 +31,7 @@ const reportSchema = new mongoose.Schema(
     },
     description: { type: String, required: true },
     imageUrl: { type: String, default: '' },
+    images: { type: [String], default: [] },
     location: { type: locationSchema, required: true },
     status: {
       type: String,

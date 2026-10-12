@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { ImageOff, Search } from 'lucide-react';
-import { resolveImageUrl } from '../../utils/imageUrl';
+import { getReportImageUrls } from '../../utils/imageUrl';
 
 const statusStyles = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -11,20 +11,32 @@ const statusStyles = {
   REJECTED: 'bg-rose-100 text-rose-700',
   DUPLICATE: 'bg-slate-200 text-slate-700',
 };
+const categories = [
+  'Road/Pothole',
+  'Streetlight',
+  'Garbage/Waste',
+  'Water Leakage',
+  'Drainage',
+  'Public Property',
+  'Traffic/Safety',
+  'Fallen Tree',
+  'Other',
+];
 
 export default function AllIssuesPage() {
   const [issues, setIssues] = useState([]);
   const [status, setStatus] = useState('ALL');
+  const [category, setCategory] = useState('ALL');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    axios.get('/authority/reports')
+    axios.get('/authority/reports', { params: { category: category === 'ALL' ? undefined : category } })
       .then((response) => setIssues(response.data.reports))
       .catch(() => setError('Unable to load issues. Please try again.'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [category]);
 
   const filteredIssues = issues.filter((issue) => {
     const matchesStatus = status === 'ALL' || issue.status === status;
@@ -33,14 +45,18 @@ export default function AllIssuesPage() {
   });
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
-      <h1 className="text-3xl font-bold text-slate-900">All issues</h1>
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft sm:p-6">
+      <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">All issues</h1>
+      <div className="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
         <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
           <Search size={18} className="shrink-0 text-slate-400" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Search report ID, title, or category" aria-label="Search issues" />
         </label>
-        <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" aria-label="Filter by status">
+        <select value={category} onChange={(event) => { setLoading(true); setError(''); setCategory(event.target.value); }} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm sm:w-auto" aria-label="Filter by issue category">
+          <option value="ALL">All categories</option>
+          {categories.map((value) => <option key={value} value={value}>{value}</option>)}
+        </select>
+        <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm sm:w-auto" aria-label="Filter by status">
           <option value="ALL">All statuses</option>
           {Object.keys(statusStyles).map((value) => <option key={value} value={value}>{value.replace('_', ' ')}</option>)}
         </select>
@@ -62,12 +78,16 @@ export default function AllIssuesPage() {
           </thead>
           <tbody className="divide-y divide-slate-200 bg-white">
             {filteredIssues.map((issue) => {
-              const photoUrl = resolveImageUrl(issue.imageUrl);
+              const photoUrls = getReportImageUrls(issue);
+              const photoUrl = photoUrls[0];
               return (
               <tr key={issue._id}>
                 <td className="px-4 py-3">
                   {photoUrl ? (
-                    <img src={photoUrl} alt="" className="h-12 w-12 rounded-lg border border-slate-200 object-cover" />
+                    <div>
+                      <img src={photoUrl} alt="" className="h-12 w-12 rounded-lg border border-slate-200 object-cover" />
+                      {photoUrls.length > 1 && <p className="mt-1 text-xs text-slate-500">{photoUrls.length} photos</p>}
+                    </div>
                   ) : (
                     <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400">
                       <ImageOff size={16} />

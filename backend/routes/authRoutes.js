@@ -7,6 +7,7 @@ const AccountIdentity = require('../models/AccountIdentity');
 const accountModels = require('../models/accountModels');
 const Report = require('../models/Report');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
+const locationData = require('../data/indianLocations.json');
 
 const router = express.Router();
 
@@ -40,20 +41,26 @@ const registrationValidation = [
   }),
 ];
 
-const indianStates = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa',
-  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
-  'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
-  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
-  'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands',
-  'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
-  'Ladakh', 'Lakshadweep', 'Puducherry',
-];
+const indianLocations = [...locationData.states, ...locationData.unionTerritories];
+const indianStates = indianLocations.map(({ name }) => name);
+const getDistrictsByState = (state) => indianLocations.find(
+  (location) => location.name.toLowerCase() === String(state || '').toLowerCase()
+)?.districts || null;
 
 const citizenRegistrationValidation = [
   ...registrationValidation,
   body('locality').trim().notEmpty().withMessage('Area or locality is required'),
-  body('district').trim().notEmpty().withMessage('District is required'),
+  body('district')
+    .trim()
+    .notEmpty()
+    .withMessage('District is required')
+    .bail()
+    .custom((district, { req }) => {
+      if (!getDistrictsByState(req.body.state)?.includes(district)) {
+        throw new Error('Select a district that belongs to the selected state or union territory');
+      }
+      return true;
+    }),
   body('state').isIn(indianStates).withMessage('Select a valid Indian state or union territory'),
 ];
 
@@ -63,6 +70,14 @@ const profileUpdateValidation = [
   body('locality').optional().trim().notEmpty().withMessage('Area or locality cannot be empty'),
   body('district').optional().trim().notEmpty().withMessage('District cannot be empty'),
   body('state').optional().isIn(indianStates).withMessage('Select a valid Indian state or union territory'),
+  body('district').optional().trim().custom((district, { req }) => {
+    const state = req.body.state || req.user.state;
+    const locationChanged = district !== req.user.district || state !== req.user.state;
+    if (locationChanged && !getDistrictsByState(state)?.includes(district)) {
+      throw new Error('Select a district that belongs to the selected state or union territory');
+    }
+    return true;
+  }),
 ];
 
 const registerWithRole = (role) => async (req, res, next) => {
@@ -132,11 +147,16 @@ router.post('/register', citizenRegistrationValidation, registerWithRole('CITIZE
 router.post('/authority/request', registrationValidation, registerWithRole('AUTHORITY'));
 router.post('/authority/register', registrationValidation, registerWithRole('AUTHORITY'));
 
+router.get('/locations', (_req, res) => {
+  res.json({ locations: indianLocations });
+});
+
 router.post(
   '/login',
   [
     body('email').isEmail().withMessage('Valid email required'),
     body('password').notEmpty().withMessage('Password is required'),
+    body('role').isIn(['CITIZEN', 'AUTHORITY', 'ADMIN']).withMessage('Select an account type'),
   ],
   async (req, res, next) => {
     try {
@@ -145,7 +165,7 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { email, password } = req.body;
+      const { email, password, role } = req.body;
       const identity = await AccountIdentity.findOne({ email: email.trim().toLowerCase() });
 
       if (!identity) {
@@ -160,6 +180,10 @@ router.post(
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(401).json({ message: 'Invalid email or password' });
+      }
+
+      if (identity.role !== role) {
+        return res.status(401).json({ message: 'These credentials do not match the selected account type.' });
       }
 
       if (identity.role === 'AUTHORITY' && user.approvalStatus !== 'APPROVED') {
@@ -234,6 +258,44 @@ router.get('/admin/stats', protect, authorizeRoles('ADMIN'), async (_req, res, n
         reports: reportCount,
         pendingAuthorities: pendingAuthorityCount,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/citizens', protect, authorizeRoles('ADMIN'), async (req, res, next) => {
+  try {
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 20, 1), 100);
+    const search = String(req.query.search || '').trim().slice(0, 100);
+    const query = {};
+
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(escapedSearch, 'i');
+      query.$or = [
+        { name: pattern },
+        { email: pattern },
+        { locality: pattern },
+        { district: pattern },
+        { state: pattern },
+      ];
+    }
+
+    const [citizens, total] = await Promise.all([
+      accountModels.CITIZEN.find(query)
+        .select('name email phone locality district state createdAt')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      accountModels.CITIZEN.countDocuments(query),
+    ]);
+
+    res.json({
+      citizens,
+      pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
     });
   } catch (error) {
     next(error);

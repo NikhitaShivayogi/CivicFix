@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { House, LogOut, MapPinned, ShieldCheck, Users } from 'lucide-react';
+import { Building2, ClipboardList, House, LayoutDashboard, LogOut, MapPinned, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const citizenNav = [
@@ -19,17 +19,24 @@ const authorityNav = [
   { to: '/authority/profile', label: 'Profile' },
 ];
 
+const adminNav = [
+  { to: '/admin', label: 'Overview', view: 'overview', Icon: LayoutDashboard },
+  { to: '/admin?view=reports', label: 'Reports', view: 'reports', Icon: ClipboardList },
+  { to: '/admin?view=citizens', label: 'Citizens', view: 'citizens', Icon: Users },
+  { to: '/admin?view=authorities', label: 'Authorities', view: 'authorities', Icon: Building2 },
+];
+
 export default function AppShell({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const navItems = user?.role === 'AUTHORITY' ? authorityNav : citizenNav;
+  const navItems = user?.role === 'ADMIN' ? adminNav : user?.role === 'AUTHORITY' ? authorityNav : citizenNav;
   const userId = user?._id || user?.id;
 
   useEffect(() => {
-    if (!userId) return undefined;
+    if (!userId || user?.role === 'ADMIN') return undefined;
 
     let active = true;
     const loadUnreadCount = () => {
@@ -48,7 +55,7 @@ export default function AppShell({ children }) {
       active = false;
       window.removeEventListener('civicfix:notifications-updated', loadUnreadCount);
     };
-  }, [userId, location.pathname]);
+  }, [user?.role, userId, location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -57,15 +64,15 @@ export default function AppShell({ children }) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 shadow-[0_1px_8px_rgba(15,23,42,0.04)] backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:py-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <div className="rounded-xl bg-civic-600 p-2 text-white shadow-soft">
-              {user?.role === 'AUTHORITY' ? <ShieldCheck size={20} /> : <MapPinned size={20} />}
+              {user?.role === 'AUTHORITY' || user?.role === 'ADMIN' ? <ShieldCheck size={20} /> : <MapPinned size={20} />}
             </div>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-civic-700">CivicFix</p>
-              <p className="text-xs text-slate-500">Community issue reporting</p>
+              <p className="hidden text-xs text-slate-500 min-[380px]:block">Community issue reporting</p>
             </div>
           </div>
 
@@ -75,17 +82,19 @@ export default function AppShell({ children }) {
               <span className="hidden sm:inline">Home</span>
             </NavLink>
             {user ? (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+                <div className="flex min-w-0 items-center gap-2 rounded-full bg-slate-100 px-2.5 py-2 text-sm font-medium text-slate-700 sm:px-3">
                   <Users size={16} />
-                  {user.name}
+                  <span className="max-w-24 truncate sm:max-w-48">{user.name}</span>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  aria-label="Logout"
+                  title="Logout"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 sm:px-3"
                 >
                   <LogOut size={16} />
-                  Logout
+                  <span className="hidden sm:inline">Logout</span>
                 </button>
               </div>
             ) : (
@@ -109,8 +118,14 @@ export default function AppShell({ children }) {
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={({ isActive }) => `flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-civic-100 text-civic-800' : 'text-slate-600 hover:bg-slate-100'}`}
+                className={({ isActive }) => {
+                  const active = user?.role === 'ADMIN'
+                    ? (new URLSearchParams(location.search).get('view') || 'overview') === item.view
+                    : isActive;
+                  return `flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${active ? 'bg-civic-100 text-civic-800' : 'text-slate-600 hover:bg-slate-100'}`;
+                }}
               >
+                {item.Icon && <item.Icon size={16} />}
                 {item.label}
                 {item.label === 'Notifications' && unreadCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-civic-600 px-1 text-[10px] text-white">{unreadCount}</span>}
               </NavLink>
@@ -122,20 +137,23 @@ export default function AppShell({ children }) {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={({ isActive }) =>
-                    `flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition ${
-                      isActive ? 'bg-civic-100 text-civic-800' : 'text-slate-600 hover:bg-slate-100'
-                    }`
-                  }
+                  className={({ isActive }) => {
+                    const active = user?.role === 'ADMIN'
+                      ? (new URLSearchParams(location.search).get('view') || 'overview') === item.view
+                      : isActive;
+                    return `flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition ${
+                      active ? 'bg-civic-100 text-civic-800' : 'text-slate-600 hover:bg-slate-100'
+                    }`;
+                  }}
                 >
-                  <span>{item.label}</span>
+                  <span className="flex items-center gap-2">{item.Icon && <item.Icon size={17} />} {item.label}</span>
                   {item.label === 'Notifications' && unreadCount > 0 && <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-civic-600 px-1 text-xs text-white">{unreadCount}</span>}
                 </NavLink>
               ))}
             </nav>
           </aside>
 
-          <main className="flex-1">{children}</main>
+          <main className="min-w-0 flex-1">{children}</main>
         </div>
       ) : (
         <main>{children}</main>

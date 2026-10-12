@@ -1,27 +1,20 @@
 import { useState } from 'react';
 import { Check, Pencil, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
-const indianStates = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa',
-  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
-  'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
-  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
-  'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands',
-  'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
-  'Ladakh', 'Lakshadweep', 'Puducherry',
-];
+import { useIndianLocations } from '../../hooks/useIndianLocations';
 
 const normalizeIndianPhone = (phone = '') => phone.replace(/^\+91\s?/, '').replace(/\D/g, '');
 
 export default function ProfilePage() {
   const { user, updateProfile } = useAuth();
+  const { locations, loading: locationsLoading, error: locationsError } = useIndianLocations();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [originalPhone, setOriginalPhone] = useState('');
   const [form, setForm] = useState({ name: '', phone: '', locality: '', district: '', state: '' });
+  const availableDistricts = locations.find((location) => location.name === form.state)?.districts || [];
 
   const beginEditing = () => {
     const phone = normalizeIndianPhone(user?.phone);
@@ -110,19 +103,23 @@ export default function ProfilePage() {
             </div>
             {user?.role === 'CITIZEN' && (
               <>
+                {locationsError && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{locationsError}</p>}
                 <div>
                   <label htmlFor="profile-locality" className="mb-2 block text-sm font-medium text-slate-700">Area or locality</label>
                   <input id="profile-locality" value={form.locality} onChange={(event) => setForm({ ...form, locality: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500" required />
                 </div>
                 <div>
-                  <label htmlFor="profile-district" className="mb-2 block text-sm font-medium text-slate-700">District</label>
-                  <input id="profile-district" value={form.district} onChange={(event) => setForm({ ...form, district: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500" required />
+                  <label htmlFor="profile-state" className="mb-2 block text-sm font-medium text-slate-700">State or union territory</label>
+                  <select id="profile-state" value={form.state} onChange={(event) => setForm((current) => ({ ...current, state: event.target.value, district: '' }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500" disabled={locationsLoading || Boolean(locationsError)} required>
+                    <option value="" disabled>{locationsLoading ? 'Loading states...' : 'Select your state/UT'}</option>
+                    {locations.map(({ name: state }) => <option key={state} value={state}>{state}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <label htmlFor="profile-state" className="mb-2 block text-sm font-medium text-slate-700">State or union territory</label>
-                  <select id="profile-state" value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500" required>
-                    <option value="" disabled>Select your state/UT</option>
-                    {indianStates.map((state) => <option key={state} value={state}>{state}</option>)}
+                  <label htmlFor="profile-district" className="mb-2 block text-sm font-medium text-slate-700">District</label>
+                  <select id="profile-district" value={form.district} onChange={(event) => setForm((current) => ({ ...current, district: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500 disabled:cursor-not-allowed disabled:bg-slate-100" disabled={!form.state} required>
+                    <option value="" disabled>{form.state ? 'Select your district' : 'Select a state first'}</option>
+                    {availableDistricts.map((district) => <option key={district} value={district}>{district}</option>)}
                   </select>
                 </div>
               </>

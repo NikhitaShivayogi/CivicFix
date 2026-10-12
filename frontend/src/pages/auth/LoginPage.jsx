@@ -7,24 +7,29 @@ export default function LoginPage({ expectedRole }) {
   const { login, logout } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
+  const [selectedRole, setSelectedRole] = useState(expectedRole || '');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!selectedRole) {
+      setError('Choose Citizen or Authority before signing in.');
+      return;
+    }
     setLoading(true);
     setError('');
 
     try {
-      const response = await login(form.email, form.password);
-      if (expectedRole && response.user.role !== expectedRole) {
+      const response = await login(form.email, form.password, selectedRole);
+      if (response.user.role !== selectedRole) {
         logout();
-        if (expectedRole === 'ADMIN') {
+        if (selectedRole === 'ADMIN') {
           setError('This is not an admin account. Use the admin login page or a valid admin user.');
           return;
         }
-        setError(expectedRole === 'AUTHORITY'
+        setError(selectedRole === 'AUTHORITY'
           ? 'This is not an authority account. Use Citizen sign in instead.'
           : 'This is not a citizen account. Use Authority sign in instead.');
         return;
@@ -44,36 +49,37 @@ export default function LoginPage({ expectedRole }) {
   };
 
   return (
-    <div className="mx-auto flex min-h-[80vh] max-w-5xl items-center justify-center px-4 py-12">
-      <div className="grid w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft lg:grid-cols-2">
-        <div className="bg-gradient-to-br from-civic-700 to-civic-500 p-8 text-white">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-civic-50">{expectedRole === 'ADMIN' ? 'Admin workspace' : expectedRole === 'AUTHORITY' ? 'Authority workspace' : expectedRole === 'CITIZEN' ? 'Citizen workspace' : 'Welcome back'}</p>
-          <h1 className="mt-4 text-3xl font-bold">{expectedRole === 'ADMIN' ? 'Admin sign in' : expectedRole === 'AUTHORITY' ? 'Authority team sign in' : expectedRole === 'CITIZEN' ? 'Citizen sign in' : 'Sign in to CivicFix'}</h1>
-          <p className="mt-4 text-civic-50">
-            {expectedRole === 'ADMIN'
+    <div className="mx-auto flex min-h-[80vh] max-w-5xl items-center justify-center px-3 py-6 sm:px-4 sm:py-12">
+      <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft sm:rounded-3xl lg:grid-cols-2">
+        <div className="bg-gradient-to-br from-civic-700 to-civic-500 p-5 text-white sm:p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-civic-50">{selectedRole === 'ADMIN' ? 'Admin workspace' : selectedRole === 'AUTHORITY' ? 'Authority workspace' : selectedRole === 'CITIZEN' ? 'Citizen workspace' : 'Welcome back'}</p>
+          <h1 className="mt-3 text-2xl font-bold sm:mt-4 sm:text-3xl">{selectedRole === 'ADMIN' ? 'Admin sign in' : selectedRole === 'AUTHORITY' ? 'Authority team sign in' : selectedRole === 'CITIZEN' ? 'Citizen sign in' : 'Sign in to CivicFix'}</h1>
+          <p className="mt-3 text-sm text-civic-50 sm:mt-4 sm:text-base">
+            {selectedRole === 'ADMIN'
               ? 'Review authority requests, oversee reports, and manage the CivicFix system.'
-              : expectedRole === 'AUTHORITY'
+              : selectedRole === 'AUTHORITY'
                 ? 'Review incoming community reports, coordinate work, and keep residents updated.'
-                : expectedRole === 'CITIZEN'
+                : selectedRole === 'CITIZEN'
                   ? 'Submit civic issues and follow their progress through your citizen workspace.'
                   : 'Monitor submitted civic issues or review community reports as an authority.'}
           </p>
         </div>
 
-        <div className="p-8">
+        <div className="p-5 sm:p-8">
           {expectedRole !== 'ADMIN' && (
-            <nav aria-label="Choose sign-in type" className="mb-6 grid grid-cols-2 gap-2">
+            <div role="group" aria-label="Choose sign-in type" className="mb-5 grid grid-cols-1 gap-2 min-[440px]:grid-cols-2 sm:mb-6">
               {[
-                { role: 'CITIZEN', label: 'Citizen', detail: 'Report and track issues', to: '/citizen/login', Icon: UserRound },
-                { role: 'AUTHORITY', label: 'Authority team', detail: 'Review community reports', to: '/authority/login', Icon: Building2 },
-              ].map(({ role, label, detail, to, Icon }) => {
-                const isActive = expectedRole === role;
+                { role: 'CITIZEN', label: 'Citizen', detail: 'Report and track issues', Icon: UserRound },
+                { role: 'AUTHORITY', label: 'Authority team', detail: 'Review community reports', Icon: Building2 },
+              ].map(({ role, label, detail, Icon }) => {
+                const isActive = selectedRole === role;
                 return (
-                  <Link
+                  <button
                     key={role}
-                    to={to}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`flex min-h-20 items-center gap-3 rounded-lg border px-3 py-3 transition ${isActive
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => { setSelectedRole(role); setError(''); }}
+                    className={`flex min-h-16 items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition sm:min-h-20 sm:py-3 ${isActive
                       ? 'border-civic-600 bg-civic-50 text-civic-800 ring-1 ring-civic-600'
                       : 'border-slate-200 bg-white text-slate-700 hover:border-civic-300 hover:bg-slate-50'}`}
                   >
@@ -82,14 +88,20 @@ export default function LoginPage({ expectedRole }) {
                       <span className="block text-sm font-semibold">{label}</span>
                       <span className="mt-0.5 block text-xs leading-4 text-slate-500">{detail}</span>
                     </span>
-                  </Link>
+                  </button>
                 );
               })}
-            </nav>
+            </div>
           )}
 
-          <h2 className="text-2xl font-semibold text-slate-900">
-            {expectedRole === 'CITIZEN' ? 'Citizen sign in' : expectedRole === 'AUTHORITY' ? 'Authority team sign in' : expectedRole === 'ADMIN' ? 'Admin sign in' : 'Sign in'}
+          {!selectedRole && (
+            <p role="status" className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              Choose Citizen or Authority to continue.
+            </p>
+          )}
+
+          <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
+            {selectedRole === 'CITIZEN' ? 'Citizen sign in' : selectedRole === 'AUTHORITY' ? 'Authority team sign in' : selectedRole === 'ADMIN' ? 'Admin sign in' : 'Select account type'}
           </h2>
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <div>
@@ -100,8 +112,9 @@ export default function LoginPage({ expectedRole }) {
                   type="email"
                   value={form.email}
                   onChange={(event) => setForm({ ...form, email: event.target.value })}
-                  className="w-full border-0 bg-transparent text-slate-900 outline-none"
+                  className="w-full border-0 bg-transparent text-slate-900 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
                   placeholder="you@example.com"
+                  disabled={!selectedRole || loading}
                   required
                 />
               </div>
@@ -115,14 +128,16 @@ export default function LoginPage({ expectedRole }) {
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(event) => setForm({ ...form, password: event.target.value })}
-                  className="w-full border-0 bg-transparent text-slate-900 outline-none"
+                  className="w-full border-0 bg-transparent text-slate-900 outline-none disabled:cursor-not-allowed disabled:text-slate-400"
                   placeholder="••••••••"
+                  disabled={!selectedRole || loading}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((visible) => !visible)}
                   className="shrink-0 text-slate-500 hover:text-slate-800"
+                  disabled={!selectedRole || loading}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -138,8 +153,8 @@ export default function LoginPage({ expectedRole }) {
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="w-full rounded-xl bg-civic-600 px-4 py-3 font-semibold text-white shadow-soft transition hover:bg-civic-700 disabled:cursor-not-allowed disabled:opacity-60">
-              {loading ? 'Signing in...' : expectedRole === 'CITIZEN' ? 'Sign in as citizen' : expectedRole === 'AUTHORITY' ? 'Sign in as authority' : 'Sign in'}
+            <button type="submit" disabled={loading || !selectedRole} className="w-full rounded-xl bg-civic-600 px-4 py-3 font-semibold text-white shadow-soft transition hover:bg-civic-700 disabled:cursor-not-allowed disabled:opacity-60">
+              {loading ? 'Signing in...' : selectedRole === 'CITIZEN' ? 'Sign in as citizen' : selectedRole === 'AUTHORITY' ? 'Sign in as authority' : selectedRole === 'ADMIN' ? 'Sign in as admin' : 'Choose account type'}
             </button>
           </form>
 

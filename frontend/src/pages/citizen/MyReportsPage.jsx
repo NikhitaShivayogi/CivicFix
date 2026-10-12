@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { resolveImageUrl } from '../../utils/imageUrl';
+import { getReportImageUrls } from '../../utils/imageUrl';
 
 const statusStyles = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -47,13 +47,14 @@ export default function MyReportsPage() {
               <p><span className="font-medium text-slate-800">Date:</span> {new Date(report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
               <p><span className="font-medium text-slate-800">Location:</span> {report.location.address || `${report.location.latitude}, ${report.location.longitude}`}</p>
             </div>
-            {resolveImageUrl(report.imageUrl) && (
-              <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <img
-                  src={resolveImageUrl(report.imageUrl)}
-                  alt={`Evidence for ${report.title}`}
-                  className="max-h-64 w-full object-contain"
-                />
+            {getReportImageUrls(report).length > 0 && (
+              <div className={`mt-4 grid gap-3 ${getReportImageUrls(report).length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                {getReportImageUrls(report).map((imageUrl, index) => (
+                  <figure key={`${imageUrl}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <img src={imageUrl} alt={`Evidence ${index + 1} for ${report.title}`} className="max-h-64 w-full object-contain" />
+                    <figcaption className="border-t border-slate-200 px-3 py-2 text-xs text-slate-500">Photo {index + 1} of {getReportImageUrls(report).length}</figcaption>
+                  </figure>
+                ))}
               </div>
             )}
             <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "check": "node scripts/check-project.js",
     "seed": "node utils/seeder.js",
     "review-authority": "node utils/reviewAuthority.js"
   },

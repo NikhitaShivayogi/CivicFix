@@ -32,9 +32,9 @@ export default function AuthorityDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft sm:p-6">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-civic-700">Authority dashboard</p>
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">Operational overview</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">Operational overview</h1>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">

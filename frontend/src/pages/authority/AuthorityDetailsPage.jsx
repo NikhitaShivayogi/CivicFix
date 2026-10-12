@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle2, UserRoundCheck } from 'lucide-react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../context/AuthContext';
-import { resolveImageUrl } from '../../utils/imageUrl';
+import { getReportImageUrls } from '../../utils/imageUrl';
 
 const statusOptions = ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'DUPLICATE'];
 
@@ -75,15 +75,15 @@ export default function AuthorityDetailsPage() {
   if (!report) return <p role="alert" className="text-sm text-red-700">{error || 'Issue not found.'}</p>;
 
   const [latitude, longitude] = [report.location.latitude, report.location.longitude];
-  const imageUrl = resolveImageUrl(report.imageUrl);
+  const imageUrls = getReportImageUrls(report);
   const isResponsible = report.authorityId && String(report.authorityId._id || report.authorityId) === String(user?._id || user?.id);
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
-      <div className="flex items-center justify-between gap-4">
-        <div>
+    <div className="min-w-0 space-y-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-soft sm:p-6">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-civic-700">{report.reportId}</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">{report.title}</h1>
+          <h1 className="mt-2 break-words text-2xl font-bold text-slate-900 sm:text-3xl">{report.title}</h1>
         </div>
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">{report.status.replace('_', ' ')}</span>
       </div>
@@ -95,21 +95,26 @@ export default function AuthorityDetailsPage() {
             <p className="mt-3 text-sm leading-7 text-slate-600">{report.description}</p>
           </div>
 
-          {imageUrl ? (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-              <img
-                src={imageUrl}
-                alt={`Evidence for ${report.title}`}
-                className="max-h-[28rem] w-full object-contain"
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none';
-                  const fallback = event.currentTarget.nextElementSibling;
-                  if (fallback) fallback.style.display = 'flex';
-                }}
-              />
-              <p className="hidden items-center justify-center gap-2 p-8 text-sm text-slate-500">
-                <AlertCircle size={18} /> Unable to load the evidence photo.
-              </p>
+          {imageUrls.length > 0 ? (
+            <div className={`grid gap-3 ${imageUrls.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+              {imageUrls.map((imageUrl, index) => (
+                <figure key={`${imageUrl}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                  <img
+                    src={imageUrl}
+                    alt={`Evidence ${index + 1} for ${report.title}`}
+                    className="max-h-[28rem] w-full object-contain"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                      const fallback = event.currentTarget.nextElementSibling;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                  <p className="hidden items-center justify-center gap-2 p-8 text-sm text-slate-500">
+                    <AlertCircle size={18} /> Unable to load evidence photo {index + 1}.
+                  </p>
+                  <figcaption className="border-t border-slate-200 px-3 py-2 text-xs text-slate-500">Photo {index + 1} of {imageUrls.length}</figcaption>
+                </figure>
+              ))}
             </div>
           ) : (
             <div className="flex items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm text-slate-500">
@@ -134,10 +139,10 @@ export default function AuthorityDetailsPage() {
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <h2 className="text-lg font-semibold text-slate-900">Issue details</h2>
             <dl className="mt-3 space-y-2 text-sm text-slate-600">
-              <div className="flex gap-2"><dt className="font-medium text-slate-800">Category:</dt><dd>{report.category}</dd></div>
+              <div className="flex flex-wrap gap-x-2"><dt className="font-medium text-slate-800">Category:</dt><dd className="min-w-0 break-words">{report.category}</dd></div>
               <div><dt className="font-medium text-slate-800">Reported by:</dt><dd className="mt-1">{report.citizenId?.name || 'Citizen'}</dd>{report.citizenId?.email && <dd className="text-xs text-slate-500">{report.citizenId.email}</dd>}{report.citizenId?.phone && <dd className="text-xs text-slate-500">{report.citizenId.phone}</dd>}</div>
               <div><dt className="font-medium text-slate-800">Responsible authority:</dt><dd className="mt-1">{report.authorityId?.name || 'Unassigned'}</dd>{report.authorityId?.email && <dd className="text-xs text-slate-500">{report.authorityId.email}</dd>}</div>
-              <div className="flex gap-2"><dt className="font-medium text-slate-800">Location:</dt><dd>{report.location.address || `${latitude}, ${longitude}`}</dd></div>
+              <div className="flex flex-wrap gap-x-2"><dt className="font-medium text-slate-800">Location:</dt><dd className="min-w-0 break-words">{report.location.address || `${latitude}, ${longitude}`}</dd></div>
               <div className="flex gap-2"><dt className="font-medium text-slate-800">Date:</dt><dd>{new Date(report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</dd></div>
             </dl>
           </div>

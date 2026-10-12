@@ -13,7 +13,10 @@ router.post(
   '/',
   protect,
   authorizeRoles('CITIZEN'),
-  upload.single('image'),
+  upload.fields([
+    { name: 'images', maxCount: 5 },
+    { name: 'image', maxCount: 1 },
+  ]),
   [
     body('title').trim().notEmpty().withMessage('Title is required'),
     body('category').notEmpty().withMessage('Category is required'),
@@ -28,12 +31,17 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
+      const uploadedFiles = [...(req.files?.images || []), ...(req.files?.image || [])];
+      const imageUrls = uploadedFiles.map((file) => (
+        /^https?:\/\//i.test(file.path || '') ? file.path : `/uploads/${file.filename}`
+      ));
       const reportPayload = {
         citizenId: req.user._id,
         title: req.body.title,
         category: req.body.category,
         description: req.body.description,
-        imageUrl: req.file ? (req.file.path || `/uploads/${req.file.filename}`) : '',
+        imageUrl: imageUrls[0] || '',
+        images: imageUrls,
         location: {
           latitude: Number(req.body.location.latitude),
           longitude: Number(req.body.location.longitude),
@@ -62,6 +70,47 @@ router.get('/my', protect, authorizeRoles('CITIZEN'), async (req, res, next) => 
   try {
     const reports = await Report.find({ citizenId: req.user._id }).sort({ createdAt: -1 }).populate('authorityId', 'name email');
     res.json({ reports });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin', protect, authorizeRoles('ADMIN'), async (req, res, next) => {
+  try {
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 20, 1), 100);
+    const search = String(req.query.search || '').trim().slice(0, 100);
+    const query = {};
+
+    if (['PENDING', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'DUPLICATE'].includes(req.query.status)) {
+      query.status = req.query.status;
+    }
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(escapedSearch, 'i');
+      query.$or = [
+        { reportId: pattern },
+        { title: pattern },
+        { category: pattern },
+        { 'location.address': pattern },
+      ];
+    }
+
+    const [reports, total] = await Promise.all([
+      Report.find(query)
+        .populate('citizenId', 'name email phone locality district state')
+        .populate('authorityId', 'name email')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Report.countDocuments(query),
+    ]);
+
+    res.json({
+      reports,
+      pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+    });
   } catch (error) {
     next(error);
   }

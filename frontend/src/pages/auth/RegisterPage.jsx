@@ -2,19 +2,11 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Mail, Phone, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
-const indianStates = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa',
-  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
-  'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
-  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
-  'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands',
-  'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
-  'Ladakh', 'Lakshadweep', 'Puducherry',
-];
+import { useIndianLocations } from '../../hooks/useIndianLocations';
 
 export default function RegisterPage({ expectedRole = 'CITIZEN' }) {
   const { register, registerAuthority } = useAuth();
+  const { locations, loading: locationsLoading, error: locationsError } = useIndianLocations();
   const navigate = useNavigate();
   const isAuthority = expectedRole === 'AUTHORITY';
   const [form, setForm] = useState({
@@ -32,6 +24,7 @@ export default function RegisterPage({ expectedRole = 'CITIZEN' }) {
   const [pendingApproval, setPendingApproval] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const availableDistricts = locations.find((location) => location.name === form.state)?.districts || [];
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -134,17 +127,21 @@ export default function RegisterPage({ expectedRole = 'CITIZEN' }) {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="district" className="mb-2 block text-sm font-medium text-slate-700">District</label>
-                    <input id="district" value={form.district} onChange={(event) => setForm({ ...form, district: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500" placeholder="Your district" autoComplete="address-level2" required />
+                    <label htmlFor="state" className="mb-2 block text-sm font-medium text-slate-700">State or union territory</label>
+                    <select id="state" value={form.state} onChange={(event) => setForm((current) => ({ ...current, state: event.target.value, district: '' }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500" autoComplete="address-level1" disabled={locationsLoading || Boolean(locationsError)} required>
+                      <option value="" disabled>{locationsLoading ? 'Loading states...' : 'Select your state/UT'}</option>
+                      {locations.map(({ name: state }) => <option key={state} value={state}>{state}</option>)}
+                    </select>
                   </div>
                   <div>
-                    <label htmlFor="state" className="mb-2 block text-sm font-medium text-slate-700">State or union territory</label>
-                    <select id="state" value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500" autoComplete="address-level1" required>
-                      <option value="" disabled>Select your state/UT</option>
-                      {indianStates.map((state) => <option key={state} value={state}>{state}</option>)}
+                    <label htmlFor="district" className="mb-2 block text-sm font-medium text-slate-700">District</label>
+                    <select id="district" value={form.district} onChange={(event) => setForm((current) => ({ ...current, district: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-civic-500 disabled:cursor-not-allowed disabled:bg-slate-100" autoComplete="address-level2" disabled={!form.state} required>
+                      <option value="" disabled>{form.state ? 'Select your district' : 'Select a state first'}</option>
+                      {availableDistricts.map((district) => <option key={district} value={district}>{district}</option>)}
                     </select>
                   </div>
                 </div>
+                {locationsError && <p role="alert" className="text-sm text-red-700">{locationsError}</p>}
               </>
             )}
 

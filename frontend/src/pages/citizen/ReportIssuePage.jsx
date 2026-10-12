@@ -19,6 +19,7 @@ const categories = [
 ];
 
 const indiaCenter = [20.5937, 78.9629];
+const maxEvidenceImages = 5;
 
 async function reverseGeocode([latitude, longitude]) {
   const params = new URLSearchParams({
@@ -89,7 +90,7 @@ export default function ReportIssuePage() {
     description: '',
     location: { latitude: null, longitude: null, address: '' },
   });
-  const [evidence, setEvidence] = useState(null);
+  const [evidence, setEvidence] = useState([]);
   const [evidenceError, setEvidenceError] = useState('');
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -134,7 +135,7 @@ export default function ReportIssuePage() {
     payload.append('location[latitude]', String(form.location.latitude));
     payload.append('location[longitude]', String(form.location.longitude));
     payload.append('location[address]', form.location.address);
-    if (evidence) payload.append('image', evidence);
+    evidence.forEach((photo) => payload.append('images', photo));
 
     try {
       const response = await axios.post('/reports', payload);
@@ -222,21 +223,26 @@ export default function ReportIssuePage() {
   };
 
   const selectEvidence = (event) => {
-    const file = event.target.files?.[0];
+    const selectedFiles = Array.from(event.target.files || []);
     event.target.value = '';
     setEvidenceError('');
 
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setEvidenceError('Choose a JPG, PNG, or WEBP photo.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setEvidenceError('Photo must be 5 MB or smaller.');
-      return;
+    const validFiles = [];
+    const errors = [];
+    for (const file of selectedFiles) {
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+        errors.push(`${file.name}: choose a JPG, PNG, or WEBP photo.`);
+      } else if (file.size > 5 * 1024 * 1024) {
+        errors.push(`${file.name}: photo must be 5 MB or smaller.`);
+      } else if (evidence.length + validFiles.length >= maxEvidenceImages) {
+        errors.push(`A report can include up to ${maxEvidenceImages} photos.`);
+      } else {
+        validFiles.push(file);
+      }
     }
 
-    setEvidence(file);
+    if (validFiles.length) setEvidence((current) => [...current, ...validFiles]);
+    if (errors.length) setEvidenceError(errors.join(' '));
   };
 
   const openCamera = async () => {
@@ -294,21 +300,25 @@ export default function ReportIssuePage() {
         return;
       }
 
-      setEvidence(photo);
+      if (evidence.length >= maxEvidenceImages) {
+        setEvidenceError(`A report can include up to ${maxEvidenceImages} photos.`);
+        closeCamera();
+        return;
+      }
+      setEvidence((current) => [...current, photo]);
       setEvidenceError('');
       closeCamera();
     }, 'image/jpeg', 0.85);
   };
 
-  const clearEvidence = () => {
-    setEvidence(null);
+  const removeEvidence = (index) => {
+    setEvidence((current) => current.filter((_photo, photoIndex) => photoIndex !== index));
     setEvidenceError('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   if (submitted) {
     return (
-      <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-soft">
+      <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-soft sm:p-8">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-civic-100 text-civic-700">
           <CheckCircle2 size={32} />
         </div>
@@ -323,8 +333,8 @@ export default function ReportIssuePage() {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft">
-      <h1 className="text-3xl font-bold text-slate-900">Report a civic issue</h1>
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft sm:p-6">
+      <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Report a civic issue</h1>
       <form onSubmit={handleSubmit} className="mt-6 grid gap-6">
         <div className="grid gap-6 md:grid-cols-2">
           <div>
@@ -353,11 +363,11 @@ export default function ReportIssuePage() {
               <h2 id="report-location-heading" className="text-base font-semibold text-slate-900">Where is the issue?</h2>
               <p className="mt-1 text-sm text-slate-600">When requested, GPS coordinates are used to pin the report and look up a nearby address with OpenStreetMap.</p>
             </div>
-            <div role="group" aria-label="Location method" className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-              <button type="button" aria-pressed={locationMode === 'MANUAL'} onClick={chooseManualLocation} className={`rounded-md px-3 py-2 text-sm font-medium ${locationMode === 'MANUAL' ? 'bg-white text-civic-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
+            <div role="group" aria-label="Location method" className="flex w-full flex-wrap rounded-lg border border-slate-200 bg-slate-50 p-1 sm:w-fit">
+              <button type="button" aria-pressed={locationMode === 'MANUAL'} onClick={chooseManualLocation} className={`min-w-0 flex-1 rounded-md px-2 py-2 text-sm font-medium sm:px-3 ${locationMode === 'MANUAL' ? 'bg-white text-civic-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
                 <MapPin size={16} className="mr-1.5 inline" />Pin on map
               </button>
-              <button type="button" aria-pressed={locationMode === 'GPS'} onClick={useCurrentLocation} disabled={locating} className={`rounded-md px-3 py-2 text-sm font-medium disabled:opacity-60 ${locationMode === 'GPS' ? 'bg-white text-civic-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
+              <button type="button" aria-pressed={locationMode === 'GPS'} onClick={useCurrentLocation} disabled={locating} className={`min-w-0 flex-1 rounded-md px-2 py-2 text-sm font-medium disabled:opacity-60 sm:px-3 ${locationMode === 'GPS' ? 'bg-white text-civic-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>
                 <LocateFixed size={16} className="mr-1.5 inline" />{resolvingAddress ? 'Finding nearby street...' : locating ? 'Finding you...' : 'Use current location'}
               </button>
             </div>
@@ -404,23 +414,27 @@ export default function ReportIssuePage() {
 
         <div>
           <p className="text-sm font-medium text-slate-700">Photo evidence <span className="font-normal text-slate-500">(optional)</span></p>
-          <p className="mt-1 text-xs text-slate-500">Take a new photo or choose one from your device. JPG, PNG, or WEBP, up to 5 MB.</p>
+          <p className="mt-1 text-xs text-slate-500">Add up to 5 photos. JPG, PNG, or WEBP, up to 5 MB each.</p>
           <div className="mt-3 flex flex-wrap gap-3">
-            <button type="button" onClick={openCamera} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-civic-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-civic-700">
+            <button type="button" onClick={openCamera} disabled={evidence.length >= maxEvidenceImages} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-civic-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-civic-700 disabled:cursor-not-allowed disabled:opacity-50">
               <Camera size={17} /> Take a photo
             </button>
-            <input ref={fileInputRef} id="file-evidence" type="file" accept="image/jpeg,image/png,image/webp" onChange={selectEvidence} className="sr-only" />
+            <input ref={fileInputRef} id="file-evidence" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={selectEvidence} className="sr-only" />
             <label htmlFor="file-evidence" className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-              <FileImage size={17} /> Choose from device
+              <FileImage size={17} /> Choose photos
             </label>
           </div>
-          {evidence && (
-            <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="min-w-0 truncate text-sm text-slate-700">{evidence.name}</p>
-              <button type="button" onClick={clearEvidence} className="shrink-0 rounded-md p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900" aria-label="Remove selected photo" title="Remove photo">
-                <X size={16} />
-              </button>
-            </div>
+          {evidence.length > 0 && (
+            <ul className="mt-3 space-y-2" aria-label="Selected evidence photos">
+              {evidence.map((photo, index) => (
+                <li key={`${photo.name}-${photo.lastModified}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="min-w-0 truncate text-sm text-slate-700">{photo.name}</p>
+                  <button type="button" onClick={() => removeEvidence(index)} className="shrink-0 rounded-md p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900" aria-label={`Remove photo ${index + 1}`} title="Remove photo">
+                    <X size={16} />
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
           {evidenceError && <p role="alert" className="mt-2 text-sm text-red-700">{evidenceError}</p>}
           {cameraError && !cameraOpen && <p role="alert" className="mt-2 text-sm text-red-700">{cameraError}</p>}
@@ -442,7 +456,7 @@ export default function ReportIssuePage() {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/80 p-4" role="presentation" onClick={(event) => {
           if (event.target === event.currentTarget) closeCamera();
         }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="camera-dialog-title" className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-2xl">
+          <section role="dialog" aria-modal="true" aria-labelledby="camera-dialog-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-3 shadow-2xl sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 id="camera-dialog-title" className="text-lg font-semibold text-slate-900">Take a photo</h2>
               <button type="button" onClick={closeCamera} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900" aria-label="Close camera">
